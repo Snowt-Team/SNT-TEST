@@ -6,17 +6,6 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 local CoreGui = game:GetService("CoreGui")
 
-local LocalPlayer = Players.LocalPlayer
-local BoundKeys = LocalPlayer.PlayerScripts.PlayerModule.CameraModule.MouseLockController.BoundKeys
-
-local GunHighlight = Instance.new("Highlight")
-local GunHandleAdornment = Instance.new("SphereHandleAdornment")
-
--- Variables:
-local murderer, sheriff, hero
-local roles = {}
-local visuals = {}
-
 function gradient(text, startColor, endColor)
     local result = ""
     local length = #text
@@ -115,192 +104,7 @@ local Tabs = {
     WindowTab = Window:Tab({ Title = "Window and File Configuration", Icon = "settings", Desc = "Manage window settings and file configurations." }),
     CreateThemeTab = Window:Tab({ Title = "Create Theme", Icon = "palette", Desc = "Design and apply custom themes." }),
 }
--- [[Функции для ММ2]] --
-local function findAngleDelta(a, b)
-	return math.deg(math.acos(a:Dot(b)))
-end
 
-local function isCharacterValid(character, Model)
-	if character and character:IsA("Model") then
-		local humanoid = character:FindFirstChildWhichIsA("Humanoid")
-		if humanoid and humanoid.Health > 0 then
-			local root = character.PrimaryPart or character:FindFirstChild("HumanoidRootPart")
-			if root then
-				return true
-			end
-		end
-	end
-	return false
-end
-	-- Update ESP:
-	local function onCharacterAdded(character, Model)
-		highlight.Adornee = character
-	end
-	player.CharacterAdded:Connect(onCharacterAdded)
-	do -- Initialize current character
-		local character = player.Character
-		if character then
-			onCharacterAdded(character)
-		end
-	end
-
-local function onPlayerRemoving(player, Player) -- Fires on Player left
-	-- Destroys Highlight:
-	local highlight = visuals[player]
-	highlight:Destroy()
-
-	-- Cleanup:
-	visuals[player] = nil
-	roles[player] = nil
-end
-
-local function handleAutoFarm()
-
-end
-
--- [[Autofarm]] --
-Tabs.AutoFarm:Toggle({
-    Title = "Autofarm Coins",
-    Default = false,
-    Callback = function(state)
-        while state do
-            local character = LocalPlayer.Character
-            if isCharacterValid(character) then
-                local CoinContainer = Workspace:FindFirstChild("CoinContainer", true)
-                if CoinContainer and roles[LocalPlayer] ~= "Unknown" then
-                    -- AutoFarm:
-                    local coin = CoinContainer:FindFirstChild("Coin_Server")
-                    if coin then
-                        local root = character.HumanoidRootPart
-                        repeat
-                            root.CFrame = CFrame.new(coin.Position - Vector3.new(0, 2.5, 0)) * CFrame.Angles(0, 0, math.rad(180))
-                            RunService.Stepped:Wait()
-                            if state then break end
-                        until not coin:IsDescendantOf(Workspace) or coin.Name ~= "Coin_Server"
-                        task.wait(0.5)
-                    end
-                else
-                    task.wait(0.5)
-                end
-            end
-            task.wait()
-        end
-    end
-})
-
-Players.PlayerAdded:Connect(onPlayerAdded)
-Players.PlayerRemoving:Connect(onPlayerRemoving)
-
---[[ Шериф/Убийца ]]--
-
-local Knife = character:FindFirstChild("Knife")
-local gundrop = Workspace:FindFirstChild("GunDrop")
-local Players = game:GetService("Players")
-local RunService = game:GetService("RunService")
-local LocalPlayer = Players.LocalPlayer
-
-local playerHighlights = {}
-local function updateESPForPlayer(player)
-    if not player.Character then
-
-        if playerHighlights[player] then
-            playerHighlights[player]:Destroy()
-            playerHighlights[player] = nil
-        end
-        return
-    end
-
-    local character = player.Character
-
-    local function hasTool(toolName)
-        local found = false
-        if player:FindFirstChild("Backpack") then
-            for _, tool in ipairs(player.Backpack:GetChildren()) do
-                if tool:IsA("Tool") and tool.Name == toolName then
-                    found = true
-                    break
-                end
-            end
-        end
-        if not found then
-            for _, item in ipairs(character:GetChildren()) do
-                if item:IsA("Tool") and item.Name == toolName then
-                    found = true
-                    break
-                end
-            end
-        end
-        return found
-    end
-    
-local isMurderer = hasTool("Knife")
-    local isSheriff  = (not isMurderer) and hasTool("Gun")
-    local isInnocent  = (not isMurderer and not isSheriff)
-
-    local desiredColor
-    if isMurderer and murdererESPToggle.Value then
-        desiredColor = Color3.new(1, 0, 0)   
-    elseif isSheriff and sheriffESPToggle.Value then
-        desiredColor = Color3.new(0, 0, 1)   
-    elseif isInnocent and innocentESPToggle.Value then
-        desiredColor = Color3.new(0, 1, 0)   
-    end
-
-    if desiredColor then
-        if not playerHighlights[player] then
-            local h = Instance.new("Highlight")
-            h.Name = "ESPHighlight"
-            h.FillTransparency = 0.5
-            h.OutlineTransparency = 1
-            h.Adornee = character
-            h.FillColor = desiredColor
-
-            h.Parent = character
-            playerHighlights[player] = h
-        else
-            playerHighlights[player].FillColor = desiredColor
-            if playerHighlights[player].Adornee ~= character then
-                playerHighlights[player].Adornee = character
-            end
-        end
-    else
-
-        if playerHighlights[player] then
-            playerHighlights[player]:Destroy()
-            playerHighlights[player] = nil
-        end
-    end
-end
-
-spawn(function()
-    while wait(1) do
-        for _, player in ipairs(Players:GetPlayers()) do
-
-            if player ~= LocalPlayer then
-                updateESPForPlayer(player)
-            end
-        end
-    end
-end)
-
-local function refreshAllPlayerESP()
-    for _, player in ipairs(Players:GetPlayers()) do
-        if player ~= LocalPlayer then
-            updateESPForPlayer(player)
-        end
-    end
-end
-
-murdererESPToggle:OnChanged(refreshAllPlayerESP)
-sheriffESPToggle:OnChanged(refreshAllPlayerESP)
-innocentESPToggle:OnChanged(refreshAllPlayerESP)
-
-Players.PlayerAdded:Connect(function(player)
-    player.CharacterAdded:Connect(function(character)
-        wait(0.5)  
-        updateESPForPlayer(player)
-    end)
-end)
 
 --[[ НАСТРОЙКИ ПЕРСОНАЖА ]]--
 local Players = game:GetService("Players")
@@ -379,6 +183,136 @@ Tabs.CharacterTab:Toggle({
 })
 
 --[[ СИСТЕМА ESP ]]--
+
+coroutine.wrap(updateRolesInfo)()
+
+local ESPFolder = Instance.new("Folder")
+ESPFolder.Name = "ESP Holder"
+ESPFolder.Parent = game.CoreGui
+
+local function AddBillboard(player)
+    local Billboard = Instance.new("BillboardGui")
+    Billboard.Name = player.Name .. "Billboard"
+    Billboard.AlwaysOnTop = true
+    Billboard.Size = UDim2.new(0, 200, 0, 50)
+    Billboard.ExtentsOffset = Vector3.new(0, 3, 0)
+    Billboard.Enabled = false
+    Billboard.Parent = ESPFolder
+
+    local TextLabel = Instance.new("TextLabel")
+    TextLabel.TextSize = 20
+    TextLabel.Text = player.Name
+    TextLabel.Font = Enum.Font.FredokaOne
+    TextLabel.BackgroundTransparency = 1
+    TextLabel.Size = UDim2.new(1, 0, 1, 0)
+    TextLabel.TextStrokeTransparency = 0
+    TextLabel.TextStrokeColor3 = Color3.new(0, 0, 0)
+    TextLabel.Parent = Billboard
+
+    repeat
+        wait()
+        pcall(function()
+            Billboard.Adornee = player.Character.Head
+            if player.Character:FindFirstChild("Knife") or player.Backpack:FindFirstChild("Knife") then
+                TextLabel.TextColor3 = Color3.new(1, 0, 0)
+                if getgenv().MurderEsp then
+                    Billboard.Enabled = true
+                end
+            elseif player.Character:FindFirstChild("Gun") or player.Backpack:FindFirstChild("Gun") then
+                TextLabel.TextColor3 = Color3.new(0, 0, 1)
+                if getgenv().SheriffEsp then
+                    Billboard.Enabled = true
+                end
+            else
+                TextLabel.TextColor3 = Color3.new(0, 1, 0)
+                if getgenv().AllEsp then
+                    Billboard.Enabled = true
+                end
+            end
+        end)
+    until not player.Parent
+end
+
+for _, player in pairs(game.Players:GetPlayers()) do
+    if player ~= game.Players.LocalPlayer then
+        coroutine.wrap(AddBillboard)(player)
+    end
+end
+
+game.Players.PlayerAdded:Connect(function(player)
+    if player ~= game.Players.LocalPlayer then
+        coroutine.wrap(AddBillboard)(player)
+    end
+end)
+
+game.Players.PlayerRemoving:Connect(function(player)
+    local billboard = ESPFolder:FindFirstChild(player.Name .. "Billboard")
+    if billboard then
+        billboard:Destroy()
+    end
+end)
+
+Tabs.EspTab:Section({
+    Title = "Murder/Sheriff ESP"
+})
+
+Tabs.EspTab:Toggle({
+    Title = "Murder ESP",
+    Default = false,
+    Callback = function(state)
+        getgenv().MurderEsp = state
+        for _, billboard in ipairs(ESPFolder:GetChildren()) do
+            if billboard:IsA("BillboardGui") then
+                local playerName = billboard.Name:sub(1, -10)
+                local player = game.Players:FindFirstChild(playerName)
+                if player and (player.Character:FindFirstChild("Knife") or player.Backpack:FindFirstChild("Knife")) then
+                    billboard.Enabled = state
+                end
+            end
+        end
+    end
+})
+
+Tabs.EspTab:Toggle({
+    Title = "Sheriff ESP",
+    Default = function(state)
+        getgenv().SheriffEsp = state
+        for _, billboard in ipairs(ESPFolder:GetChildren()) do
+            if billboard:IsA("BillboardGui") then
+                local playerName = billboard.Name:sub(1, -10)
+                local player = game.Players:FindFirstChild(playerName)
+                if player and (player.Character:FindFirstChild("Gun") or player.Backpack:FindFirstChild("Gun")) then
+                    billboard.Enabled = state
+                end
+            end
+        end
+    end
+})
+
+Tabs.EspTab:Toggle({
+    Title = "All ESP",
+    Default = false,
+    Callback = function(state)
+        for _, billboard in ipairs(ESPFolder:GetChildren()) do
+            if billboard:IsA("BillboardGui") then
+                local playerName = billboard.Name:sub(1, -10)
+                local player = game.Players:FindFirstChild(playerName)
+                if player and player.Character then
+                    local hasKnife = player.Character:FindFirstChild("Knife") or player.Backpack:FindFirstChild("Knife")
+                    local hasGun = player.Character:FindFirstChild("Gun") or player.Backpack:FindFirstChild("Gun")
+                    if not (hasKnife or hasGun) then
+                        billboard.Enabled = state
+                    end
+                end
+            end
+        end
+    end
+})
+
+Tabs.EspTab:Section({
+    Title = "General ESP"
+})
+
 local camera = workspace.CurrentCamera
 local playerHighlights = {}
 local textLabels = {}
@@ -415,31 +349,6 @@ Tabs.EspTab:Toggle({
     Default = false,
     Callback = function(state) 
         ESPSettings.Highlight = state
-    end
-})
-
-Tabs.EspTab:Toggle({
-    Title = "Sheriff ESP",
-    Default = false,
-    Callback = function(Value)
-        sheriffESPToggle = Value
-    end
-})
-
-Tabs.EspTab:Toggle({
-    Title = "Murderer ESP",
-    Default = false,
-    Callback = function(Value)
-    murdererESPToggle = Value
-    end
-})
-
-
-Tabs.EspTab:Toggle({
-    Title = "Innocent ESP",
-    Default = false,
-    Callback = function(Value)
-    innocentESPToggle = Value
     end
 })
 
@@ -623,7 +532,7 @@ Players.PlayerRemoving:Connect(function()
 end)
 
 
---[[ ОБНОВЛЕННАЯ СИСТЕМА АИМБОТА ]]--
+--[[ СИСТЕМА АИМБОТА ]]--
 local isShiftLock = false
 local lastBodyGyro = nil
 local lockRadius = 100
@@ -673,7 +582,7 @@ local dropdown = Tabs.AimbotTab:Dropdown({
     Value = "None",
     Callback = function(selected)
         lockedPlayer = (selected ~= "None") and Players:FindFirstChild(selected) or nil
-   end
+    end
 })
 
 -- Функция поиска ближайшего игрока
@@ -826,6 +735,34 @@ local function ToggleNoclip(state)
                 Settings.Noclip.Connection:Disconnect()
             end
         end
+end
+
+-- [[ ОСНОВНЫЕ ФУНКЦИИ ММ2 ]] --
+
+local function updateRolesInfo()
+    while true do
+        local players = game:GetService("Players"):GetPlayers()
+        local murderer, sheriff = "Unknown", "Unknown"
+
+        for _, player in ipairs(players) do
+            if player.Character then
+                local backpack = player.Backpack
+                if backpack then
+                    for _, tool in ipairs(backpack:GetChildren()) do
+                        if tool:IsA("Tool") then
+                            if tool.Name == "Knife" then
+                                murderer = player.Name
+                            elseif tool.Name == "Gun" then
+                                sheriff = player.Name
+                            end
+                        end
+                    end
+                end
+            end
+        end
+
+        wait(1)
+    end
 end
 
 -- Хитбоксы
