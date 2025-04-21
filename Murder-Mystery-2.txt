@@ -275,7 +275,8 @@ Tabs.EspTab:Toggle({
 
 Tabs.EspTab:Toggle({
     Title = "Sheriff ESP",
-    Default = function(state)
+    Default = false,
+    Callback = function(state)
         getgenv().SheriffEsp = state
         for _, billboard in ipairs(ESPFolder:GetChildren()) do
             if billboard:IsA("BillboardGui") then
